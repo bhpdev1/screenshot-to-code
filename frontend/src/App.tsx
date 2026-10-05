@@ -93,6 +93,8 @@ function App() {
       replicateApiKey: null,
       anthropicApiKey: null,
       geminiApiKey: null,
+      nvidiaApiKey: null,
+      nvidiaModel: "meta/llama-3.2-11b-vision-instruct",
       screenshotOneApiKey: null,
       isImageGenerationEnabled: true,
       editorTheme: EditorTheme.COBALT,

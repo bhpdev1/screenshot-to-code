@@ -20,9 +20,9 @@ def set_screenshot_backend(backend: ScreenshotBackend) -> None:
 
 
 async def probe_screenshot_preview() -> bool:
-    """Check (once, cached) whether the active backend can run here."""
+    """Check whether the active backend can run here."""
     global _available
-    if _available is None:
+    if _available is None or not _available:
         _available = await _backend.available()
     return _available
 
@@ -49,3 +49,15 @@ async def capture_preview_screenshot(
     pages (old and new) actually mount before we capture.
     """
     return await _backend.capture(normalize_babel_cdn(html), device, full_page)
+
+
+async def capture_url_screenshot(
+    url: str,
+    device: str = "desktop",
+    full_page: bool = True,
+) -> bytes:
+    """Render a remote URL to PNG via the active backend."""
+    if hasattr(_backend, "capture_url"):
+        return await _backend.capture_url(url, device, full_page)
+    raise NotImplementedError("Current backend does not support capture_url")
+

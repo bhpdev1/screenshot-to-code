@@ -1,8 +1,10 @@
 import base64
+from typing import Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 import httpx
 from urllib.parse import urlparse
+from preview_screenshot.registry import probe_screenshot_preview, capture_url_screenshot
 
 router = APIRouter()
 
@@ -13,27 +15,29 @@ def normalize_url(url: str) -> str:
     If no protocol is specified, default to https://
     """
     url = url.strip()
-    
+
     # Parse the URL
     parsed = urlparse(url)
-    
+
     # Check if we have a scheme
     if not parsed.scheme:
         # No scheme, add https://
         url = f"https://{url}"
-    elif parsed.scheme in ['http', 'https']:
+    elif parsed.scheme in ["http", "https"]:
         # Valid scheme, keep as is
         pass
     else:
         # Check if this might be a domain with port (like example.com:8080)
         # urlparse treats this as scheme:netloc, but we want to handle it as domain:port
-        if ':' in url and not url.startswith(('http://', 'https://', 'ftp://', 'file://')):
+        if ":" in url and not url.startswith(
+            ("http://", "https://", "ftp://", "file://")
+        ):
             # Likely a domain:port without protocol
             url = f"https://{url}"
         else:
             # Invalid protocol
             raise ValueError(f"Unsupported protocol: {parsed.scheme}")
-    
+
     return url
 
 
@@ -43,39 +47,51 @@ def bytes_to_data_url(image_bytes: bytes, mime_type: str) -> str:
 
 
 async def capture_screenshot(
-    target_url: str, api_key: str, device: str = "desktop"
+    target_url: str, api_key: Optional[str] = None, device: str = "desktop"
 ) -> bytes:
-    api_base_url = "https://api.screenshotone.com/take"
+    # 1. Prefer local Chromium via Playwright when available (fast, free, no external key needed)
+    if await probe_screenshot_preview():
+        try:
+            return await capture_url_screenshot(target_url, device=device)
+        except Exception as e:
+            print(f"[screenshot] Local Chromium capture failed: {e}. Trying fallback if key is present.")
+            if not api_key:
+                raise e
 
-    params = {
-        "access_key": api_key,
-        "url": target_url,
-        "full_page": "true",
-        "device_scale_factor": "1",
-        "format": "png",
-        "block_ads": "true",
-        "block_cookie_banners": "true",
-        "block_trackers": "true",
-        "cache": "false",
-        "viewport_width": "342",
-        "viewport_height": "684",
-    }
+    # 2. Fallback to ScreenshotOne if API key is provided
+    if api_key and api_key.strip():
+        api_base_url = "https://api.screenshotone.com/take"
 
-    if device == "desktop":
-        params["viewport_width"] = "1280"
-        params["viewport_height"] = "832"
+        params = {
+            "access_key": api_key.strip(),
+            "url": target_url,
+            "full_page": "true",
+            "device_scale_factor": "1",
+            "format": "png",
+            "block_ads": "true",
+            "block_cookie_banners": "true",
+            "block_trackers": "true",
+            "cache": "false",
+            "viewport_width": "1280" if device == "desktop" else "342",
+            "viewport_height": "832" if device == "desktop" else "684",
+        }
 
-    async with httpx.AsyncClient(timeout=60) as client:
-        response = await client.get(api_base_url, params=params)
-        if response.status_code == 200 and response.content:
-            return response.content
-        else:
-            raise Exception("Error taking screenshot")
+        async with httpx.AsyncClient(timeout=60) as client:
+            response = await client.get(api_base_url, params=params)
+            if response.status_code == 200 and response.content:
+                return response.content
+            else:
+                err_text = response.text or "Unknown error"
+                raise Exception(f"ScreenshotOne returned HTTP {response.status_code}: {err_text}")
+
+    raise Exception(
+        "Headless Chromium is unavailable and no valid ScreenshotOne API key was provided."
+    )
 
 
 class ScreenshotRequest(BaseModel):
     url: str
-    apiKey: str
+    apiKey: Optional[str] = None
 
 
 class ScreenshotResponse(BaseModel):
@@ -91,7 +107,7 @@ async def app_screenshot(request: ScreenshotRequest):
     try:
         # Normalize the URL
         normalized_url = normalize_url(url)
-        
+
         # Capture screenshot with normalized URL
         image_bytes = await capture_screenshot(normalized_url, api_key=api_key)
 
@@ -101,7 +117,10 @@ async def app_screenshot(request: ScreenshotRequest):
         return ScreenshotResponse(url=data_url)
     except ValueError as e:
         # Handle URL normalization errors
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         # Handle other errors
-        raise HTTPException(status_code=500, detail=f"Error capturing screenshot: {str(e)}")
+        print(f"[screenshot] Error capturing screenshot for {url}: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Error capturing screenshot: {str(e)}"
+        )

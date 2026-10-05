@@ -128,11 +128,44 @@ function SettingsTab({ settings, setSettings, appTheme, setAppTheme }: Props) {
 
           {/* API Keys */}
           <div className="rounded-lg border border-gray-200 bg-white dark:border-zinc-700 dark:bg-zinc-800/60">
-            <div className="border-b border-gray-100 px-4 py-3 dark:border-zinc-700">
+            <div className="border-b border-gray-100 px-4 py-3 dark:border-zinc-700 flex justify-between items-center">
               <h2 className="text-sm font-medium text-gray-900 dark:text-white">
                 API Keys
               </h2>
+              <button
+                type="button"
+                onClick={() => {
+                  setSettings((s) => ({
+                    ...s,
+                    openAiApiKey: "",
+                    openAiBaseURL: "",
+                    anthropicApiKey: "",
+                    geminiApiKey: "",
+                    nvidiaApiKey: "",
+                    replicateApiKey: "",
+                  }));
+                  try {
+                    const current = window.localStorage.getItem("setting");
+                    if (current) {
+                      const parsed = JSON.parse(current);
+                      parsed.openAiApiKey = "";
+                      parsed.openAiBaseURL = "";
+                      parsed.anthropicApiKey = "";
+                      parsed.geminiApiKey = "";
+                      parsed.nvidiaApiKey = "";
+                      parsed.replicateApiKey = "";
+                      window.localStorage.setItem("setting", JSON.stringify(parsed));
+                    }
+                  } catch (e) {
+                    console.error("Failed to clear keys", e);
+                  }
+                }}
+                className="text-xs text-red-500 hover:text-red-700 dark:text-red-400 font-medium underline cursor-pointer"
+              >
+                Tout effacer / Clear all
+              </button>
             </div>
+
             <div className="space-y-4 p-4">
               <div>
                 <p className="text-sm font-medium text-gray-700 dark:text-zinc-300">
@@ -222,6 +255,61 @@ function SettingsTab({ settings, setSettings, appTheme, setAppTheme }: Props) {
                     }))
                   }
                 />
+              </div>
+
+              <div>
+                <p className="text-sm font-medium text-gray-700 dark:text-zinc-300">
+                  NVIDIA API key (NIM)
+                </p>
+                <p className="mt-1 text-xs text-gray-500 dark:text-zinc-400">
+                  Clé NVIDIA NIM (commence par nvapi-...). Utilise le modèle Vision Llama 3.2.
+                </p>
+                <Input
+                  id="nvidia-api-key"
+                  className="mt-2"
+                  placeholder="NVIDIA API key (nvapi-...)"
+                  value={settings.nvidiaApiKey || ""}
+                  onChange={(e) =>
+                    setSettings((s) => ({
+                      ...s,
+                      nvidiaApiKey: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+
+              <div>
+                <p className="text-sm font-medium text-gray-700 dark:text-zinc-300">
+                  Modèle NVIDIA Vision (NIM)
+                </p>
+                <p className="mt-1 text-xs text-gray-500 dark:text-zinc-400">
+                  Choisissez le modèle pour analyser et cloner les captures d'écran.
+                </p>
+                <Select
+                  value={settings.nvidiaModel || "meta/llama-3.2-11b-vision-instruct"}
+                  onValueChange={(val) =>
+                    setSettings((s) => ({
+                      ...s,
+                      nvidiaModel: val,
+                    }))
+                  }
+                >
+                  <SelectTrigger className="mt-2 w-full">
+                    <span>
+                      {settings.nvidiaModel === "meta/llama-3.2-90b-vision-instruct"
+                        ? "Llama 3.2 90B Vision (Expérimental - Peut être saturé sur NVIDIA)"
+                        : "Llama 3.2 11B Vision (Rapide et stable ~20s)"}
+                    </span>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="meta/llama-3.2-11b-vision-instruct">
+                      Llama 3.2 11B Vision (Rapide et stable ~20s)
+                    </SelectItem>
+                    <SelectItem value="meta/llama-3.2-90b-vision-instruct">
+                      Llama 3.2 90B Vision (Expérimental - Peut être saturé sur NVIDIA)
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               {!IS_RUNNING_ON_CLOUD && (

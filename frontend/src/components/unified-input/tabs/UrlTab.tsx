@@ -40,14 +40,6 @@ function UrlTab({
   async function takeScreenshot() {
     const trimmedReferenceUrl = referenceUrl.trim();
 
-    if (!screenshotOneApiKey) {
-      toast.error(
-        "Please add a ScreenshotOne API key in Settings. You can also upload screenshots directly in the Upload tab.",
-        { duration: 6000 },
-      );
-      return;
-    }
-
     if (!trimmedReferenceUrl) {
       toast.error("Please enter a URL");
       return;
@@ -74,7 +66,7 @@ function UrlTab({
         method: "POST",
         body: JSON.stringify({
           url: trimmedReferenceUrl,
-          apiKey: screenshotOneApiKey,
+          apiKey: screenshotOneApiKey || "",
         }),
         headers: {
           "Content-Type": "application/json",
@@ -82,7 +74,8 @@ function UrlTab({
       });
 
       if (!response.ok) {
-        throw new Error("Failed to capture screenshot");
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || "Failed to capture screenshot");
       }
 
       const res = await response.json();
@@ -92,9 +85,9 @@ function UrlTab({
         textPrompt,
         isAssetExtractionEnabled,
       );
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      toast.error("Failed to capture screenshot. Check console for details.");
+      toast.error(error.message || "Failed to capture screenshot");
     } finally {
       setIsLoading(false);
     }
@@ -157,7 +150,7 @@ function UrlTab({
             </p>
           ) : (
             <p className="text-[11px] text-gray-400 dark:text-zinc-500">
-              Requires a ScreenshotOne API key in Settings.
+              Captured automatically with local Chromium (or ScreenshotOne if configured).
             </p>
           )}
         </div>

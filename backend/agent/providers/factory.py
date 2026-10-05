@@ -9,11 +9,13 @@ from agent.providers.anthropic import AnthropicProviderSession, serialize_anthro
 from agent.providers.base import ProviderSession
 from agent.providers.gemini import GeminiProviderSession, serialize_gemini_tools
 from agent.providers.openai import OpenAIProviderSession, serialize_openai_tools
+from agent.providers.nvidia import NvidiaProviderSession
 from agent.tools import canonical_tool_definitions
-from config import REPLICATE_API_KEY
+from config import REPLICATE_API_KEY, NVIDIA_API_KEY
 from fs_logging.agent_runs import AgentRunRecorder
-from llm import ANTHROPIC_MODELS, GEMINI_MODELS, OPENAI_MODELS, Llm
+from llm import ANTHROPIC_MODELS, GEMINI_MODELS, OPENAI_MODELS, NVIDIA_MODELS, Llm
 from preview_screenshot import is_screenshot_preview_available
+
 
 
 def create_provider_session(
@@ -27,6 +29,8 @@ def create_provider_session(
     replicate_api_key: Optional[str],
     should_extract_assets: bool = True,
     recorder: Optional[AgentRunRecorder] = None,
+    nvidia_api_key: Optional[str] = None,
+    nvidia_model: Optional[str] = None,
 ) -> ProviderSession:
     canonical_tools = canonical_tool_definitions(
         image_generation_enabled=should_generate_images,
@@ -38,9 +42,28 @@ def create_provider_session(
         screenshot_enabled=is_screenshot_preview_available(),
     )
 
+    if model in NVIDIA_MODELS or (openai_api_key and openai_api_key.startswith("nvapi-")):
+        key = (
+            nvidia_api_key
+            or (openai_api_key if (openai_api_key and openai_api_key.startswith("nvapi-")) else None)
+            or NVIDIA_API_KEY
+        )
+        if not key:
+            raise Exception("NVIDIA API key is missing. Please provide it in the settings dialog or backend/.env.")
+        base_url = openai_base_url or "https://integrate.api.nvidia.com/v1"
+        return NvidiaProviderSession(
+            api_key=key,
+            model=model,
+            prompt_messages=prompt_messages,
+            base_url=base_url,
+            model_name=nvidia_model,
+            recorder=recorder,
+        )
+
     if model in OPENAI_MODELS:
         if not openai_api_key:
             raise Exception("OpenAI API key is missing.")
+
 
         client = AsyncOpenAI(api_key=openai_api_key, base_url=openai_base_url)
         return OpenAIProviderSession(

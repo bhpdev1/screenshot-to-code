@@ -26,6 +26,8 @@ export interface Settings {
   isTermOfServiceAccepted: boolean;
   anthropicApiKey: string | null;
   geminiApiKey: string | null;
+  nvidiaApiKey: string | null;
+  nvidiaModel?: string | null;
 }
 
 export interface DesignSystem {

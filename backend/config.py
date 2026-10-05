@@ -1,16 +1,18 @@
 import os
 
-NUM_VARIANTS = 4
-NUM_VARIANTS_VIDEO = 2
+NUM_VARIANTS = int(os.environ.get("NUM_VARIANTS", "1"))
+NUM_VARIANTS_VIDEO = int(os.environ.get("NUM_VARIANTS_VIDEO", "1"))
 
 # LLM-related
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", None)
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", None)
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", None)
-OPENAI_BASE_URL = os.environ.get("OPENAI_BASE_URL", None)
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "").strip() or None
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "").strip() or None
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip() or None
+OPENAI_BASE_URL = os.environ.get("OPENAI_BASE_URL", "").strip() or None
+NVIDIA_API_KEY = os.environ.get("NVIDIA_API_KEY", "").strip() or None
+NVIDIA_MODEL = os.environ.get("NVIDIA_MODEL", "meta/llama-3.2-11b-vision-instruct").strip()
 
 # Image generation (optional)
-REPLICATE_API_KEY = os.environ.get("REPLICATE_API_KEY", None)
+REPLICATE_API_KEY = os.environ.get("REPLICATE_API_KEY", "").strip() or None
 
 # Debugging-related
 IS_DEBUG_ENABLED = bool(os.environ.get("IS_DEBUG_ENABLED", False))

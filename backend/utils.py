@@ -140,33 +140,41 @@ def format_prompt_preview(
 
 
 def print_prompt_preview(prompt_messages: List[ChatCompletionMessageParam]) -> None:
-    preview = format_prompt_preview(prompt_messages)
-    lines = preview.split("\n")
-    max_length = max(len(line) for line in lines) if lines else 20
-    max_length = max(20, min(120, max_length))
+    try:
+        preview = format_prompt_preview(prompt_messages)
+        lines = preview.split("\n")
+        max_length = max(len(line) for line in lines) if lines else 20
+        max_length = max(20, min(120, max_length))
 
-    title = "PROMPT PREVIEW"
-    max_length = max(max_length, len(title) + 4)
+        title = "PROMPT PREVIEW"
+        max_length = max(max_length, len(title) + 4)
 
-    print("┌─" + "─" * max_length + "─┐")
-    title_padding = (max_length - len(title)) // 2
-    print(
-        f"│ {' ' * title_padding}{title}{' ' * (max_length - len(title) - title_padding)} │"
-    )
-    print("├─" + "─" * max_length + "─┤")
+        print("+-" + "-" * max_length + "-+")
+        title_padding = (max_length - len(title)) // 2
+        print(
+            f"| {' ' * title_padding}{title}{' ' * (max_length - len(title) - title_padding)} |"
+        )
+        print("+-" + "-" * max_length + "-+")
 
-    for line in lines:
-        if len(line) <= max_length:
-            print(f"│ {line:<{max_length}} │")
-        else:
-            wrapped = textwrap.wrap(
-                line, width=max_length, break_long_words=False, break_on_hyphens=False
-            )
-            for wrapped_line in wrapped:
-                print(f"│ {wrapped_line:<{max_length}} │")
+        for line in lines:
+            if len(line) <= max_length:
+                print(f"| {line:<{max_length}} |")
+            else:
+                wrapped = textwrap.wrap(
+                    line, width=max_length, break_long_words=False, break_on_hyphens=False
+                )
+                for wrapped_line in wrapped:
+                    print(f"| {wrapped_line:<{max_length}} |")
 
-    print("└─" + "─" * max_length + "─┘")
-    print()
+        print("+-" + "-" * max_length + "-+")
+        print()
+    except Exception as e:
+        # Fallback to avoid interrupting prompt generation
+        try:
+            print(f"[Prompt preview suppressed due to console encoding: {e}]")
+        except Exception:
+            pass
+
 
 
 def truncate_data_strings(data: List[ChatCompletionMessageParam]):  # type: ignore
